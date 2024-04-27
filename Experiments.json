@@ -1,0 +1,66 @@
+{
+    "experiment1": 
+    {
+        "batch_size": 32,
+        "num_workers": 16,
+        "max_context_length_abstract": 200,
+        "max_context_length_article": 200,
+        "profile_needed?": "False",
+        "epochs":3,
+        "save_freq":1000,
+        "early_stop_sensitivity":100,
+        "num_examples_generate" : 10,
+        "hyper_params": {
+            "lr": 1e-4,
+            "dropout": 0.3,
+            "embed_size": 256,
+            "num_heads": 32,
+            "vocab_size": 1000,
+            "num_decoder_blocks": 6,
+            "num_encoder_blocks": 8,
+            "compile_options": {
+                "dynamic": true,
+                "fullgraph": true,
+                "options": {
+                    "epilogue_fusion": true,
+                    "max_autotune": true,
+                    "shape_padding": true,
+                    "triton.cudagraphs": true,
+                    "trace.graph_diagram": true
+                }
+            }
+        }
+    },
+    "experiment2": 
+    {
+        "batch_size": 128,
+        "num_workers": 2,
+        "max_context_length_abstract": 200,
+        "max_context_length_article": 200,
+        "profile_needed?": "False",
+        "epochs":1,
+        "save_freq":1000,
+        "early_stop_sensitivity":100,
+        "num_examples_generate" : 10,
+        "hyper_params": {
+            "lr": 1e-4,
+            "dropout": 0.1,
+            "embed_size": 128,
+            "num_heads": 8,
+            "vocab_size": 1000,
+            "num_decoder_blocks": 3,
+            "num_encoder_blocks": 3,
+            "compile_options": {
+                "dynamic": true,
+                "fullgraph": true,
+                "options": {
+                    "epilogue_fusion": true,
+                    "max_autotune": true,
+                    "shape_padding": true,
+                    "triton.cudagraphs": true,
+                    "trace.graph_diagram": true
+                }
+            }
+        }
+    }
+}
