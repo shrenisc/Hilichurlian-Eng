@@ -5,11 +5,11 @@ from torch.utils.data import Dataset
 import pandas as pd
 class TextDataset(Dataset):
     def __init__(self, max_context_length_abstract, max_context_lenght_article, split):
-        path1="Hilichurl_Eng - Sheet1.csv"
+        path1="dataset/Hilichurl_Eng - Sheet1.csv"
         dataset=pd.read_csv(path1)
         #dataset = load_dataset("scientific_papers", 'arxiv', cache_dir=path1)[split]
         self.data = dataset
-        json_path1="tokenizer.json"
+        json_path1="src/notebooks/tokenizer.json"
         self.tokenizer = Tokenizer.from_file(json_path1)
         self.max_context_length_abstract = max_context_length_abstract
         self.max_context_length_article = max_context_lenght_article
@@ -20,12 +20,13 @@ class TextDataset(Dataset):
         return self.length
 
     def __getitem__(self, idx):
-        abstract = self.data[idx]["Hilichurl"]
-        article = self.data[idx]["English"]
+        #print(idx)
+        abstract = self.data.iloc[idx]["Hilichurl"]
+        article = self.data.iloc[idx]["English"]
         #tokenize
         abstract = self.tokenizer.encode(abstract).ids
         article = self.tokenizer.encode(article).ids
-        print(abstract,article)
+        #print(abstract,article)
         #pad
         if len(abstract) > self.max_context_length_abstract:
             abstract = abstract[:self.max_context_length_abstract]

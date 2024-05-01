@@ -98,7 +98,7 @@ def train(params, model):
         for i, data in enumerate(progress_bar):
             x, y, article = data
             x, y, article = x.to(device), y.to(device), article.to(device)
-            print(article)
+            #print(article)
             
             #train an iteration
             with torch.amp.autocast(device_type = "cuda", dtype = torch.float16): #use mixed precision training
@@ -132,7 +132,7 @@ def train(params, model):
 def validation(params, model):
     model.eval()
     val_dataloader = create_dataloader(params, split = "validation")
-    tokenizer = Tokenizer.from_file("tokenizer.json")
+    tokenizer = Tokenizer.from_file("src/notebooks/tokenizer.json")
     progress_bar = tqdm.tqdm(val_dataloader, desc = "Validating")
     bleu = Bleu(ngram = 4, smooth = "smooth1")
     rouge = Rouge()
@@ -181,14 +181,14 @@ def init():
     torch.set_float32_matmul_precision('high')
     
     #use flash attention
-    torch.backends.cuda.enable_flash_sdp(True)
-    torch.backends.cuda.enable_mem_efficient_sdp(False)
+    torch.backends.cuda.enable_flash_sdp(False)
+    torch.backends.cuda.enable_mem_efficient_sdp(True)
     torch.backends.cuda.enable_math_sdp(False)
     
     return device
 
 def generate_examples(params, model):
-    tokenizer = Tokenizer.from_file("tokenizer.json")
+    tokenizer = Tokenizer.from_file("src/notebooks/tokenizer.json")
     model.eval()
     dataloader = create_dataloader(params, split = "test")
     progress_bar = tqdm.tqdm(dataloader, desc = "Generating examples")
@@ -223,7 +223,7 @@ def generate_examples(params, model):
 
 
 def run_experiment():
-    experiments=pd.read_json("Experiments.json")
+    experiments=pd.read_json("src/Experiments.json")
     for i in range(len(experiments.columns)):
         #experiment parmams and experiment id
         params=experiments[f"experiment{i+1}"]
@@ -251,7 +251,7 @@ def run_experiment():
         params["rouge_score"]=[]
      
         #profile and train model
-        profile_model(params, model)
+        #profile_model(params, model)
         train(params, model)
         generate_examples(params, model)
     

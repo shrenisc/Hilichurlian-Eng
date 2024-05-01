@@ -29,8 +29,8 @@ def init():
     torch.set_float32_matmul_precision('high')
     
     #use flash attention
-    torch.backends.cuda.enable_flash_sdp(True)
-    torch.backends.cuda.enable_mem_efficient_sdp(False)
+    torch.backends.cuda.enable_flash_sdp(False)
+    torch.backends.cuda.enable_mem_efficient_sdp(True)
     torch.backends.cuda.enable_math_sdp(False)
     
     return device
@@ -103,7 +103,7 @@ def train(params, model):
 def validation(params, model):
     model.eval()
     val_dataloader = create_dataloader(params, split = "validation")
-    tokenizer = Tokenizer.from_file("tokenizer.json")
+    tokenizer = Tokenizer.from_file("src/notebooks/tokenizer.json")
     progress_bar = tqdm.tqdm(val_dataloader, desc = "Validating")
     bleu = Bleu(ngram = 4, smooth = "smooth1")
     rouge = Rouge()
@@ -138,7 +138,7 @@ def validation(params, model):
 
 
 def generate_examples(params, model):
-    tokenizer = Tokenizer.from_file("tokenizer.json")
+    tokenizer = Tokenizer.from_file("src/notebooks/tokenizer.json")
     model.eval()
     dataloader = create_dataloader(params, split = "test")
     progress_bar = tqdm.tqdm(dataloader, desc = "Generating examples")
@@ -171,7 +171,7 @@ def generate_examples(params, model):
                 break
 
 def run_experiment():
-    experiments=pd.read_json("Experiments.json")
+    experiments=pd.read_json("src/Experiments.json")
     for i in range(len(experiments.columns)):
         #experiment parmams and experiment id
         params=experiments[f"experiment{i+1}"]
@@ -188,7 +188,12 @@ def run_experiment():
         model = Foundation(params['hyper_params']).to(device)
         print(f"The number of parameters is {model.get_num_params()}")
 
-        #create the writer and logger
+        #create the loss and accuracy lists
+        params["train_loss"]=[]
+        params["train_acc"]=[]
+        params["bleu_score"]=[]
+        params["rouge_score"]=[]
+        
         #profile and train model
         train(params, model)
         generate_examples(params, model)

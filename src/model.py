@@ -231,7 +231,7 @@ class Foundation(nn.Module):
             return compiled_model
         return decorator
 
-    @custom_compilation()
+    #@custom_compilation()
     def forward(self, x, article, y = None, return_loss = False):     
         x = self.text_embedding(x)
         article = self.text_embedding(article)
