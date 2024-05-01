@@ -199,55 +199,34 @@ class Encoder(nn.Module):
         x = x + self.feed_forward(x1)
         return x
 
-class Foundation(nn.Module):
+class Translator(nn.Module):
     """
     The main model
     """
-    def __init__(self, hyper_params):
-        super(Foundation, self).__init__()
-        self.vocab_size=hyper_params['vocab_size']
-        self.lr =hyper_params['lr'] 
-        self.dropout = hyper_params['dropout']
-        self.embed_size = hyper_params['embed_size']
-        self.num_heads = hyper_params['num_heads']
-        self.num_decoder_blocks = hyper_params['num_decoder_blocks']
-        self.num_encoder_blocks = hyper_params['num_encoder_blocks']
-        self.compile_options= hyper_params["compile_options"]
-        self.pad_char = hyper_params['pad_char']
+    def __init__(self, engVocabSize, hilliVocabSize, embed_size, num_decoder_blocks, num_encoder_blocks, num_heads, dropout, pad_char):
+        super(Translator, self).__init__()
+        self.engEmbedding = nn.Embedding(engVocabSize, embed_size)
+        self.hilliEmbedding = nn.Embedding(hilliVocabSize, embed_size)
+        self.decoder_block = nn.ModuleList([Decoder(embed_size, embed_size, num_heads, dropout) for _ in range(num_decoder_blocks)])
+        self.encoder_block = nn.ModuleList([Encoder(embed_size, embed_size, num_heads, dropout) for _ in range(num_encoder_blocks)])
+        self.dense = nn.Linear(embed_size, engVocabSize, bias = False)
+        self.pad_char = pad_char
 
-        self.text_embedding = nn.Embedding(self.vocab_size, self.embed_size)
-        self.decoder_block = nn.ModuleList([Decoder(self.embed_size, self.embed_size, self.num_heads, self.dropout) for _ in range(self.num_decoder_blocks)])
-        self.encoder_block = nn.ModuleList([Encoder(self.embed_size, self.embed_size, self.num_heads, self.dropout) for _ in range(self.num_encoder_blocks)])
-        self.dense = nn.Linear(self.embed_size, self.vocab_size, bias = False)
-        self.text_embedding.weight = self.dense.weight
-    
-
-
-    def custom_compilation():   
-        def decorator(fn):
-            def compiled_model(self,*args,**kwargs):
-                compiled_model_fn=torch.compile(**self.compile_options)(fn)
-                return compiled_model_fn(self, *args,**kwargs)
-            return compiled_model
-        return decorator
-
-    #@custom_compilation()
-    def forward(self, x, article, y = None, return_loss = False):     
-        x = self.text_embedding(x)
-        article = self.text_embedding(article)
+    def forward(self, x, originalText, y = None, return_loss = False):
+        x = self.engEmbedding(x)
+        originalText = self.hilliEmbedding(originalText)
 
         for encoder in self.encoder_block:
-            article = encoder(article)  
+            originalText = encoder(originalText)  
         
         for decoder in self.decoder_block:
-            x = decoder(x, article)
+            x = decoder(x, originalText)
         x = self.dense(x)
 
         #when calculating the loss, apply the masking, so that we don't calculate the loss for the padding
         if return_loss:
             mask = (y != self.pad_char).to(torch.int64).view(-1)
-            loss = F.cross_entropy(x.view(-1, x.size(-1)), y.view(-1), 
-                                   ignore_index=-1, reduction='none', label_smoothing=0.2)
+            loss = F.cross_entropy(x.view(-1, x.size(-1)), y.view(-1), ignore_index=-1, reduction='none')
             loss = (loss * mask).sum() / mask.sum()
             acc = (x.argmax(dim = -1) == y).to(torch.float32).view(-1)
             acc = (acc * mask).sum() / mask.sum()
@@ -256,23 +235,10 @@ class Foundation(nn.Module):
             x = F.softmax(x, dim = -1)
             return x
     
-    def generate(self, x, article):
-        x = self.text_embedding(x)
-        article = self.text_embedding(article)
-
-        for encoder in self.encoder_block:
-            article = encoder(article)  
-        
-        for decoder in self.decoder_block:
-            x = decoder(x, article)
-        x = self.dense(x)
-        x = F.softmax(x, dim = -1)
-        return x
-    
     def get_num_params(self):
         n_params = sum(p.numel() for p in self.parameters())
         return n_params
 
-    def config_optimizer(self, scaler = None):
-        optimizer = torch.optim.AdamW(self.parameters(), lr = self.lr, weight_decay=0.1, fused = True)
+    def config_optimizer(self, lr):
+        optimizer = torch.optim.AdamW(self.parameters(), lr = lr, weight_decay=0.1, fused = False)
         return optimizer
