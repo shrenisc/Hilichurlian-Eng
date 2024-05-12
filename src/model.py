@@ -171,9 +171,9 @@ class Decoder(nn.Module):
         self.feed_forward = nn.Sequential(
             nn.Dropout(dropout),
             nn.Linear(input_shape, input_shape*2, bias=False),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Linear(input_shape*2, output_shape, bias=False),
-            nn.SiLU(),
+            nn.ReLU(),
         )
         self.layernorm = RMSNorm(input_shape)
         self.layernorm2 = RMSNorm(input_shape)
@@ -202,9 +202,9 @@ class Encoder(nn.Module):
         self.feed_forward = nn.Sequential(
             nn.Dropout(dropout),
             nn.Linear(input_shape, input_shape*2, bias=False),
-            nn.SiLU(),
+            nn.ReLU(),
             nn.Linear(input_shape*2, output_shape, bias=False),
-            nn.SiLU(),
+            nn.ReLU(),
         )
         self.layernorm = RMSNorm(input_shape)
         self.layernorm2 = RMSNorm(input_shape)
@@ -252,7 +252,7 @@ class Translator(nn.Module):
         if return_loss:
             mask = (y != self.pad_char).to(torch.int64).view(-1)
             loss = F.cross_entropy(
-                x.view(-1, x.size(-1)), y.view(-1), ignore_index=-1, reduction='none')
+                x.view(-1, x.size(-1)), y.view(-1), ignore_index=-1, reduction='none', label_smoothing=0.4)
             loss = (loss * mask).sum() / mask.sum()
             acc = (x.argmax(dim=-1) == y).to(torch.float32).view(-1)
             acc = (acc * mask).sum() / mask.sum()

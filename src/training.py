@@ -6,10 +6,9 @@ from tokenizers import Tokenizer
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = 'false'
 
-EPOCHS = 20
-LEARNING_RATE = 1e-2
-MAX_ITERATIONS = 300*EPOCHS
-
+EPOCHS = 10
+LEARNING_RATE = 4e-4
+DROPOUT = 0.1
 
 def collate_fn(batch):
     x = [s[0] for s in batch]
@@ -35,8 +34,8 @@ torch.backends.cuda.enable_flash_sdp(True)
 torch.backends.cuda.enable_mem_efficient_sdp(True)
 torch.backends.cuda.enable_math_sdp(True)
 
-model = Translator(engVocabSize=1000, hilliVocabSize=1000, embed_size=128,
-                   num_encoder_blocks=4, num_decoder_blocks=4, num_heads=16, dropout=0.3, pad_char=4).to(device)
+model = Translator(engVocabSize=804, hilliVocabSize=292, embed_size=256,
+                   num_encoder_blocks=5, num_decoder_blocks=5, num_heads=8, dropout=DROPOUT, pad_char=2).to(device)
 print(f"The number of parameters is {model.get_num_params()}")
 
 dataset = TextDataset(engContextLength=100, hilliContextLength=100)
@@ -45,8 +44,6 @@ train_dataloader = torch.utils.data.DataLoader(
     dataset, batch_size=4, shuffle=True, collate_fn=collate_fn, num_workers=4)
 model.train()
 optimizer = model.config_optimizer(LEARNING_RATE)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-    optimizer, T_max=MAX_ITERATIONS)
 
 
 def generate(sentence):
@@ -63,6 +60,8 @@ def generate(sentence):
         output = model(x=x, originalText=sentence, return_loss=False)
         output = torch.argmax(output[0][-1]).item()
         currentOutput.append(output)
+        if (output == 1):
+            break
     currentOutput = engTokenizer.decode(currentOutput)
     model.train()
     return currentOutput
@@ -81,7 +80,6 @@ for epoch in range(EPOCHS):
 
         loss.backward()
         optimizer.step()
-        scheduler.step()
         optimizer.zero_grad(set_to_none=True)
         progress_bar.postfix = f"Loss: {loss.item()}, acc: {acc.item()}"
     with torch.no_grad():

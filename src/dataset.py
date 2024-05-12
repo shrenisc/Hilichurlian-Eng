@@ -28,9 +28,9 @@ class TextDataset(Dataset):
             engText = engText[:self.engContextLength]
 
         engText = engText + \
-            [4 for _ in range(self.engContextLength - len(engText))]
+            [2 for _ in range(self.engContextLength - len(engText))]
         hilliText = hilliText + \
-            [4 for _ in range(self.hilliContextLength - len(hilliText))]
+            [2 for _ in range(self.hilliContextLength - len(hilliText))]
 
         engText = torch.tensor(engText, dtype=torch.int64)
 
