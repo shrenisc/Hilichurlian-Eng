@@ -8,7 +8,7 @@ def compute_freqs_cis(embed_dim: int, max_seq_length: int, device, theta: float 
     # we compute the frequencies for the rotary embeddings
     freqs = 1.0 / (theta ** (torch.arange(0, embed_dim, 2,
                    device=device)[: (embed_dim // 2)].float() / embed_dim))
-    t = torch.arange(max_seq_length, device=freqs.device)  # type: ignore
+    t = torch.arange(max_seq_length, device=freqs.device).float()  # type: ignore
     freqs = torch.outer(t, freqs).float()  # type: ignore
     freqs_real = torch.cos(freqs)
     freqs_imag = torch.sin(freqs)
