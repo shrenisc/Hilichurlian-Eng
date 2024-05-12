@@ -7,7 +7,7 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = 'false'
 
 EPOCHS = 10
-LEARNING_RATE = 4e-4
+LEARNING_RATE = 1e-3
 DROPOUT = 0.1
 
 def collate_fn(batch):
@@ -35,10 +35,10 @@ torch.backends.cuda.enable_mem_efficient_sdp(True)
 torch.backends.cuda.enable_math_sdp(True)
 
 model = Translator(engVocabSize=804, hilliVocabSize=292, embed_size=256,
-                   num_encoder_blocks=5, num_decoder_blocks=5, num_heads=8, dropout=DROPOUT, pad_char=2).to(device)
+                   num_encoder_blocks=8, num_decoder_blocks=8, num_heads=16, dropout=DROPOUT, pad_char=2).to(device)
 print(f"The number of parameters is {model.get_num_params()}")
 
-dataset = TextDataset(engContextLength=100, hilliContextLength=100)
+dataset = TextDataset(engContextLength=300, hilliContextLength=200)
 
 train_dataloader = torch.utils.data.DataLoader(
     dataset, batch_size=4, shuffle=True, collate_fn=collate_fn, num_workers=4)
@@ -83,6 +83,10 @@ for epoch in range(EPOCHS):
         optimizer.zero_grad(set_to_none=True)
         progress_bar.postfix = f"Loss: {loss.item()}, acc: {acc.item()}"
     with torch.no_grad():
-        print(generate("Mi mosi gusha."))  # I am ahppy
+        print(generate("Mi mosi gusha."),"\n")  # I am ahppy
+        print(generate("Mi Muhe Nye Mi Muhe Beru."),"\n") #I hate what I do
+        print(generate("Unu Du Tomo Beru Si?"),"\n") #What are your two friends doing?
+        print(generate("Mi muhe Gusha Boya."),"\n") # I like green.
+        print(generate("Mi muhe Mi Muhe Upa Celi Nini, mi muhe Lata."),"\n") #I wish for the sun to be gone, I appreciate the cold.
 
     torch.save(model, "models/model.pt")
