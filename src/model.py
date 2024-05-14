@@ -240,7 +240,7 @@ class Translator(nn.Module):
     def forward(self, x, originalText, y=None, return_loss=False):
         x = self.engEmbedding(x)
         originalText = self.hilliEmbedding(originalText)
-
+        
         for encoder in self.encoder_block:
             originalText = encoder(originalText)
 
@@ -252,7 +252,7 @@ class Translator(nn.Module):
         if return_loss:
             mask = (y != self.pad_char).to(torch.int64).view(-1)
             loss = F.cross_entropy(
-                x.view(-1, x.size(-1)), y.view(-1), ignore_index=-1, reduction='none', label_smoothing=0.4)
+                x.view(-1, x.size(-1)), y.view(-1), ignore_index=-1, reduction='none', label_smoothing=0.2)
             loss = (loss * mask).sum() / mask.sum()
             acc = (x.argmax(dim=-1) == y).to(torch.float32).view(-1)
             acc = (acc * mask).sum() / mask.sum()

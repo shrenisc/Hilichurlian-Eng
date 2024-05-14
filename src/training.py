@@ -6,8 +6,8 @@ from tokenizers import Tokenizer
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = 'false'
 
-EPOCHS = 10
-LEARNING_RATE = 4e-4
+EPOCHS = 30
+LEARNING_RATE = 7e-4
 DROPOUT = 0.1
 
 def collate_fn(batch):
@@ -34,27 +34,25 @@ torch.backends.cuda.enable_flash_sdp(True)
 torch.backends.cuda.enable_mem_efficient_sdp(True)
 torch.backends.cuda.enable_math_sdp(True)
 
-model = Translator(engVocabSize=804, hilliVocabSize=292, embed_size=256,
-                   num_encoder_blocks=5, num_decoder_blocks=5, num_heads=8, dropout=DROPOUT, pad_char=2).to(device)
+model = Translator(engVocabSize=129, hilliVocabSize=129, embed_size=256,
+                   num_encoder_blocks=7, num_decoder_blocks=7, num_heads=8, dropout=DROPOUT, pad_char=0).to(device)
 print(f"The number of parameters is {model.get_num_params()}")
 
-dataset = TextDataset(engContextLength=100, hilliContextLength=100)
+dataset = TextDataset(engContextLength=500, hilliContextLength=500)
 
 train_dataloader = torch.utils.data.DataLoader(
-    dataset, batch_size=4, shuffle=True, collate_fn=collate_fn, num_workers=4)
+    dataset, batch_size=8, shuffle=True, collate_fn=collate_fn, num_workers=4)
 model.train()
 optimizer = model.config_optimizer(LEARNING_RATE)
 
 
 def generate(sentence):
-    hilliTokenizer = Tokenizer.from_file("models/hilliTokenizer.json")
-    engTokenizer = Tokenizer.from_file("models/englighTokenizer.json")
-    sentence = hilliTokenizer.encode(sentence).ids
+    sentence = [ord(char) for char in sentence]
     sentence = torch.tensor(
         sentence, dtype=torch.int64).unsqueeze(0).to(device)
-    currentOutput = [0]
+    currentOutput = [2]
     model.eval()
-    for i in range(100):
+    for i in range(500):
         x = torch.tensor(
             currentOutput, dtype=torch.int64).unsqueeze(0).to(device)
         output = model(x=x, originalText=sentence, return_loss=False)
@@ -62,9 +60,12 @@ def generate(sentence):
         currentOutput.append(output)
         if (output == 1):
             break
-    currentOutput = engTokenizer.decode(currentOutput)
+    #convert ascii to char
+    finalOutput = ""
+    for char in currentOutput:
+        finalOutput += chr(char)
     model.train()
-    return currentOutput
+    return finalOutput
 
 
 for epoch in range(EPOCHS):
@@ -74,7 +75,6 @@ for epoch in range(EPOCHS):
         x, y, originalText = data
         x, y, originalText = x.to(device), y.to(
             device), originalText.to(device)
-
         loss, acc = model(x=x, originalText=originalText,
                           y=y, return_loss=True)
 

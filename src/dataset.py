@@ -7,8 +7,6 @@ import pandas as pd
 class TextDataset(Dataset):
     def __init__(self, engContextLength, hilliContextLength):
         self.data = pd.read_csv("dataset/Hilichurl_Eng - Sheet1.csv")
-        self.engTokenizer = Tokenizer.from_file("models/englighTokenizer.json")
-        self.hilliTokenizer = Tokenizer.from_file("models/hilliTokenizer.json")
         self.engContextLength = engContextLength
         self.hilliContextLength = hilliContextLength
         self.length = len(self.data)
@@ -19,18 +17,31 @@ class TextDataset(Dataset):
     def __getitem__(self, idx):
         hilliText = self.data.iloc[idx]["Hilichurl"]
         engText = self.data.iloc[idx]["English"]
-        hilliText = self.hilliTokenizer.encode(hilliText).ids
-        engText = self.engTokenizer.encode(engText).ids
-
+        tokenizedEngText = [2]
+        #convert to ascii
+        for char in engText:
+            if ord(char) > 127:
+                continue
+            tokenizedEngText.append(ord(char))
+        tokenizedEngText.append(1)
+        engText = tokenizedEngText
+    
+        tokenizedHilliText = []
+        for char in hilliText:
+            if ord(char) > 127:
+                continue
+            tokenizedHilliText.append(ord(char))
+        hilliText = tokenizedHilliText
+        
         if len(hilliText) > self.hilliContextLength:
             hilliText = hilliText[:self.hilliContextLength]
         if len(engText) > self.engContextLength:
             engText = engText[:self.engContextLength]
 
         engText = engText + \
-            [2 for _ in range(self.engContextLength - len(engText))]
+            [0 for _ in range(self.engContextLength - len(engText))]
         hilliText = hilliText + \
-            [2 for _ in range(self.hilliContextLength - len(hilliText))]
+            [0 for _ in range(self.hilliContextLength - len(hilliText))]
 
         engText = torch.tensor(engText, dtype=torch.int64)
 
