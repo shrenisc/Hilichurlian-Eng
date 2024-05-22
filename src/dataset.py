@@ -5,13 +5,14 @@ import pandas as pd
 
 
 class TextDataset(Dataset):
-    def __init__(self, engContextLength, hilliContextLength):
-        self.data = pd.read_csv("dataset/Hilichurl_Eng - Sheet1.csv")
+    def __init__(self, path, engContextLength, hilliContextLength, isTrain = True):
+        self.data = pd.read_csv(path)
         self.engTokenizer = Tokenizer.from_file("models/englighTokenizer.json")
         self.hilliTokenizer = Tokenizer.from_file("models/hilliTokenizer.json")
         self.engContextLength = engContextLength
         self.hilliContextLength = hilliContextLength
         self.length = len(self.data)
+        self.isTrain = isTrain
 
     def __len__(self):
         return self.length
@@ -19,6 +20,8 @@ class TextDataset(Dataset):
     def __getitem__(self, idx):
         hilliText = self.data.iloc[idx]["Hilichurl"]
         engText = self.data.iloc[idx]["English"]
+        if not self.isTrain:
+            return engText, hilliText
         hilliText = self.hilliTokenizer.encode(hilliText).ids
         engText = self.engTokenizer.encode(engText).ids
 
@@ -27,6 +30,7 @@ class TextDataset(Dataset):
         if len(engText) > self.engContextLength:
             engText = engText[:self.engContextLength]
 
+        
         engText = engText + \
             [2 for _ in range(self.engContextLength - len(engText))]
         hilliText = hilliText + \
