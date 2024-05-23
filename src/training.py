@@ -44,6 +44,10 @@ dataset = TextDataset(path = "dataset/train.csv", engContextLength=300, hilliCon
 train_dataloader = torch.utils.data.DataLoader(
     dataset, batch_size=4, shuffle=True, collate_fn=collate_fn, num_workers=4)
 val_dataset = TextDataset(path = "dataset/val.csv", engContextLength=300, hilliContextLength=200, isTrain=False)
+
+test_dataset = TextDataset(path = "dataset/test.csv", engContextLength=300, hilliContextLength=200, isTrain=False)
+test_dataloader = torch.utils.data.DataLoader(
+    test_dataset, batch_size=1, shuffle=False, collate_fn=collate_fn, num_workers=4)
 model.train()
 optimizer = model.config_optimizer(LEARNING_RATE)
 
@@ -100,3 +104,19 @@ for epoch in range(EPOCHS):
         print(f"BLEU score: {bleu}")
         
     torch.save(model, "models/model.pt")
+
+#testing the model
+with torch.no_grad():
+    #get validation BLEU score
+    print("Calculating BLEU score")
+    generated = []
+    referenced = []
+    for data in test_dataloader:
+        engText, hilliText = data
+        generated_text = generate(hilliText)
+        generated.append(generated_text.split(" "))
+        referenced.append([engText.split(" ")])
+        # print(f"Generated: {generated_text}")
+        # print(f"Referenced: {engText}\n\n")
+    bleu = corpus_bleu(referenced, generated)
+    print(f"BLEU score: {bleu}")
