@@ -8,73 +8,90 @@ from nltk.translate.bleu_score import corpus_bleu
 os.environ["TOKENIZERS_PARALLELISM"] = 'false'
 import pandas as pd
 
+EPOCHS = 10
+LEARNING_RATE = 5e-4
+DROPOUT = 0.1
+VOCAB_SIZE = 1000
+CONTEXT_LENGTH = 500
+NUM_ENCODER_BLOCKS = 8
+NUM_DECODER_BLOCKS = 8
+NUM_HEADS = 16
+EMBED_SIZE = 256
+BATCH_SIZE = 32
+NUM_WORKERS = 4
+
 lang=[["gl","en"],
       ["glpt","en"],
       ["pt","en"],
       ['tr','en']]
+
+def collate_fn(batch):
+    x = [s[0] for s in batch]
+    y = [s[1] for s in batch]
+    originalText = [s[2] for s in batch]
+    x = torch.stack(x)
+    y = torch.stack(y)
+    originalText = torch.stack(originalText)
+    return x, y, originalText
+
+def eval_collate_fn(batch):
+    engText = [s[0] for s in batch]
+    hilliText = [s[1] for s in batch]
+    return engText, hilliText
+
+print(f"Using PyTorch version {torch.__version__}")
+
+# use gpu if available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device {device}")
+
+# use tensor cores
+torch.set_float32_matmul_precision('high')
+
+# use flash attention
+torch.backends.cuda.enable_flash_sdp(True)
+torch.backends.cuda.enable_mem_efficient_sdp(True)
+torch.backends.cuda.enable_math_sdp(True)
+
 for cur,target in lang:
     name=cur+"_to_"+target
     path = "dataset/comparisions/"
-    EPOCHS = 10
-    LEARNING_RATE = 5e-4
-    DROPOUT = 0.1
 
     bleu_scores=[]
     train_loss = []
     train_acc = []
-    def collate_fn(batch):
-        x = [s[0] for s in batch]
-        y = [s[1] for s in batch]
-        originalText = [s[2] for s in batch]
-        x = torch.stack(x)
-        y = torch.stack(y)
-        originalText = torch.stack(originalText)
-        return x, y, originalText
-
-
-    print(f"Using PyTorch version {torch.__version__}")
-
-    # use gpu if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device {device}")
-
-    # use tensor cores
-    torch.set_float32_matmul_precision('high')
-
-    # use flash attention
-    torch.backends.cuda.enable_flash_sdp(True)
-    torch.backends.cuda.enable_mem_efficient_sdp(True)
-    torch.backends.cuda.enable_math_sdp(True)
-
-    model = Translator(engVocabSize=1000, hilliVocabSize=1000, embed_size=256,
-                    num_encoder_blocks=8, num_decoder_blocks=8, num_heads=16, dropout=DROPOUT, pad_char=2).to(device)
+    
+    model = Translator(engVocabSize=VOCAB_SIZE, hilliVocabSize=VOCAB_SIZE, embed_size=EMBED_SIZE,
+                    num_encoder_blocks=NUM_ENCODER_BLOCKS, num_decoder_blocks=NUM_DECODER_BLOCKS, num_heads=NUM_HEADS, dropout=DROPOUT, pad_char=2).to(device)
     print(f"The number of parameters is {model.get_num_params()}")
-
-    dataset = TextDataset(path = path+cur+"_to_"+target+"train.csv", engContextLength=500, hilliContextLength=500,cur=cur,target=target,)
-
+    
+    dataset = TextDataset(path = path+cur+"_to_"+target+"train.csv", engContextLength=CONTEXT_LENGTH, hilliContextLength=CONTEXT_LENGTH ,cur=cur,target=target,)
     train_dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=16, shuffle=True, collate_fn=collate_fn, num_workers=4)
-    val_dataset = TextDataset(path = path+cur+"_to_"+target+"val.csv", engContextLength=500, hilliContextLength=500,cur=cur,target=target, isTrain=False)
+        dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn, num_workers=NUM_WORKERS)
+    
+    val_dataset = TextDataset(path = path+cur+"_to_"+target+"val.csv", engContextLength=CONTEXT_LENGTH, hilliContextLength=CONTEXT_LENGTH, cur=cur,target=target, isTrain=False)
+    val_dataloader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=eval_collate_fn, num_workers=NUM_WORKERS)
 
-    test_dataset = TextDataset(path = path+cur+"_to_"+target+"test.csv", engContextLength=500, hilliContextLength=500,cur=cur,target=target, isTrain=False)
+    test_dataset = TextDataset(path = path+cur+"_to_"+target+"test.csv", engContextLength=CONTEXT_LENGTH, hilliContextLength=CONTEXT_LENGTH , cur=cur,target=target, isTrain=False)
     test_dataloader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=2, shuffle=False, collate_fn=collate_fn, num_workers=4)
+        test_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=eval_collate_fn, num_workers=NUM_WORKERS)
+    
     model.train()
     optimizer = model.config_optimizer(LEARNING_RATE)
 
+    hilliTokenizer = Tokenizer.from_file(f"models/{cur}_tokeniser.json")
+    engTokenizer = Tokenizer.from_file(f"models/{cur}s_{target}_tokeniser.json")
 
-    def generate(sentence):
-        hilliTokenizer = Tokenizer.from_file(f"models/{cur}_tokeniser.json")
-        engTokenizer = Tokenizer.from_file(f"models/{cur}s_{target}_tokeniser.json")
-        sentence = hilliTokenizer.encode(sentence).ids
-        sentence = torch.tensor(
-            sentence, dtype=torch.int64).unsqueeze(0).to(device)
+    def generate(batched_sentence):
+        batched_sentence = hilliTokenizer.encode(batched_sentence)
+        batched_sentence = torch.tensor(batched_sentence, dtype=torch.int64).unsqueeze(0).to(device)
         currentOutput = [0]
         model.eval()
         for i in range(100):
             x = torch.tensor(
                 currentOutput, dtype=torch.int64).unsqueeze(0).to(device)
-            output = model(x=x, originalText=sentence, return_loss=False)
+            output = model(x=x, originalText=batched_sentence, return_loss=False)
             output = torch.argmax(output[0][-1]).item()
             currentOutput.append(output)
             if (output == 1):
@@ -82,7 +99,6 @@ for cur,target in lang:
         currentOutput = engTokenizer.decode(currentOutput)
         model.train()
         return currentOutput
-
 
     for epoch in range(EPOCHS):
 
@@ -101,12 +117,13 @@ for cur,target in lang:
             progress_bar.postfix = f"Loss: {loss.item()}, acc: {acc.item()}"
             train_loss.append(loss.item())
             train_acc.append(acc.item())
+            
         with torch.no_grad():
             #get validation BLEU score
             print("Calculating BLEU score")
             generated = []
             referenced = []
-            for data in val_dataset:
+            for data in val_dataloader:
                 engText, hilliText = data
                 generated_text = generate(hilliText)
                 generated.append(generated_text.split(" "))
@@ -116,6 +133,7 @@ for cur,target in lang:
             bleu = corpus_bleu(referenced, generated)
             bleu_scores.append(bleu)
             print(f"BLEU score: {bleu}")
+            break
             
         torch.save(model, "models/model.pt")
 
@@ -134,6 +152,7 @@ for cur,target in lang:
             # print(f"Referenced: {engText}\n\n")
         bleu = corpus_bleu(referenced, generated)
         print(f"BLEU score: {bleu}")
+        
     bleu_scores.append(bleu)
     pd.Dataframe(data=bleu_scores).to_csv(f"Bleu scores/{name}_bleu.csv")
     pd.Dataframe(data=train_loss).to_csv(f"Bleu scores/{name}_train_loss.csv")
