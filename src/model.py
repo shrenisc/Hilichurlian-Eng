@@ -108,7 +108,6 @@ class CrossAttention(nn.Module):
         key_batch, key_block, key_channels = key.size()
         # batch size, sequence length, embedding dimensionality (n_embd)
         value_batch, value_block, value_channels = value.size()
-
         assert query_batch == key_batch == value_batch
         assert query_channels == key_channels == value_channels
 
@@ -236,7 +235,6 @@ class Translator(nn.Module):
             embed_size, embed_size, num_heads, dropout) for _ in range(num_encoder_blocks)])
         self.dense = nn.Linear(embed_size, engVocabSize, bias=False)
         self.pad_char = pad_char
-    @torch.compile(dynamic = False, fullgraph = True, options = {"epilogue_fusion":True, "max_autotune" : True, "shape_padding":True, "triton.cudagraphs" : True})
     def forward(self, x, originalText, y=None, return_loss=False):
         x = self.engEmbedding(x)
         originalText = self.hilliEmbedding(originalText)
