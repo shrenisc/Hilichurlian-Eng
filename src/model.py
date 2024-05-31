@@ -100,7 +100,7 @@ class CrossAttention(nn.Module):
         self.num_heads = num_heads
         self.embed_dim = embed_dim
         self.dropout = dropout
-
+    @torch.compile(dynamic = True, fullgraph = True, options = {"epilogue_fusion":True, "max_autotune" : True, "shape_padding":True, "triton.cudagraphs" : True})
     def forward(self, query, key, value):
         # batch size, sequence length, embedding dimensionality (n_embd)
         query_batch, query_block, query_channels = query.size()
@@ -127,7 +127,7 @@ class CrossAttention(nn.Module):
         value = value.view(value_batch, value_block, self.num_heads,
                            value_channels // self.num_heads).transpose(1, 2)
 
-        # print(query.shape, key.shape, value.shape)
+        
 
         # efficient attention using Flash Attention CUDA kernels
         y = torch.nn.functional.scaled_dot_product_attention(

@@ -19,8 +19,8 @@ class TextDataset(Dataset):
         return self.length
 
     def __getitem__(self, idx):
-        hilliText = self.data.iloc[idx][self.columns[1]]
-        engText = self.data.iloc[idx][self.columns[2]]
+        hilliText = self.data.iloc[idx][self.columns[2]]
+        engText = self.data.iloc[idx][self.columns[1]]
         if not self.isTrain:
             return engText, hilliText
         hilliText = self.hilliTokenizer.encode(hilliText).ids
