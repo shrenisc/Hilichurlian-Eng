@@ -100,7 +100,6 @@ class CrossAttention(nn.Module):
         self.num_heads = num_heads
         self.embed_dim = embed_dim
         self.dropout = dropout
-    @torch.compile(dynamic = True, fullgraph = True, options = {"epilogue_fusion":True, "max_autotune" : True, "shape_padding":True, "triton.cudagraphs" : True})
     def forward(self, query, key, value):
         # batch size, sequence length, embedding dimensionality (n_embd)
         query_batch, query_block, query_channels = query.size()
@@ -235,6 +234,8 @@ class Translator(nn.Module):
             embed_size, embed_size, num_heads, dropout) for _ in range(num_encoder_blocks)])
         self.dense = nn.Linear(embed_size, engVocabSize, bias=False)
         self.pad_char = pad_char
+        
+    # @torch.compile(dynamic = True, fullgraph = True, options = {"epilogue_fusion":True, "max_autotune" : True, "shape_padding":True, "triton.cudagraphs" : True})
     def forward(self, x, originalText, y=None, return_loss=False):
         x = self.engEmbedding(x)
         originalText = self.hilliEmbedding(originalText)

@@ -21,7 +21,7 @@ for cur,target in lang:
     eng_context_length = 500
     hilli_churl_context_length = 500
 
-    val_batch_size = 64
+    val_batch_size = 128
     bleu_scores=[]
     train_loss = []
     train_acc = []
@@ -56,7 +56,7 @@ for cur,target in lang:
     dataset = TextDataset(path = path+cur+"_to_"+target+"train.csv", engContextLength=eng_context_length, hilliContextLength=hilli_churl_context_length,cur=cur,target=target,)
 
     train_dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=16, shuffle=True, collate_fn=collate_fn, num_workers=4)
+        dataset, batch_size=48, shuffle=True, collate_fn=collate_fn, num_workers=4)
     val_dataset = TextDataset(path = path+cur+"_to_"+target+"val.csv", engContextLength=eng_context_length, hilliContextLength=hilli_churl_context_length,cur=cur,target=target, isTrain=False)
 
     test_dataset = TextDataset(path = path+cur+"_to_"+target+"test.csv", engContextLength=eng_context_length, hilliContextLength=hilli_churl_context_length,cur=cur,target=target, isTrain=False)
