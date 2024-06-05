@@ -16,8 +16,8 @@ for cur,target in lang:
     name=cur+"_to_"+target
     path = "dataset/comparisions/"
     EPOCHS = 10
-    LEARNING_RATE = 1e-3
-    DROPOUT = 0.1
+    LEARNING_RATE = 1e-4
+    DROPOUT = 0.3
     eng_context_length = 500
     hilli_churl_context_length = 500
 
@@ -56,7 +56,7 @@ for cur,target in lang:
     dataset = TextDataset(path = path+cur+"_to_"+target+"train.csv", engContextLength=eng_context_length, hilliContextLength=hilli_churl_context_length,cur=cur,target=target,)
 
     train_dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=48, shuffle=True, collate_fn=collate_fn, num_workers=4)
+        dataset, batch_size=32, shuffle=True, collate_fn=collate_fn, num_workers=4)
     val_dataset = TextDataset(path = path+cur+"_to_"+target+"val.csv", engContextLength=eng_context_length, hilliContextLength=hilli_churl_context_length,cur=cur,target=target, isTrain=False)
 
     test_dataset = TextDataset(path = path+cur+"_to_"+target+"test.csv", engContextLength=eng_context_length, hilliContextLength=hilli_churl_context_length,cur=cur,target=target, isTrain=False)
@@ -169,6 +169,8 @@ for cur,target in lang:
             print("Calculating BLEU score")
             referenced = [[eng.split()] for eng,_ in val_dataset]
             generated_text = validate_batch(val_dataset,val_batch_size)
+            print("Referenced text: ",referenced[:5])
+            print("Generated text: ",generated_text[:5])
             bleu = corpus_bleu(referenced,generated_text)
             bleu_scores.append(bleu)
             print(f"BLEU score: {bleu}")

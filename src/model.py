@@ -235,7 +235,7 @@ class Translator(nn.Module):
         self.dense = nn.Linear(embed_size, engVocabSize, bias=False)
         self.pad_char = pad_char
         
-    # @torch.compile(dynamic = True, fullgraph = True, options = {"epilogue_fusion":True, "max_autotune" : True, "shape_padding":True, "triton.cudagraphs" : True})
+    # @torch.compile(dynamic = False, fullgraph = True, options = {"epilogue_fusion":True, "max_autotune" : True, "shape_padding":True, "triton.cudagraphs" : True})
     def forward(self, x, originalText, y=None, return_loss=False):
         x = self.engEmbedding(x)
         originalText = self.hilliEmbedding(originalText)
